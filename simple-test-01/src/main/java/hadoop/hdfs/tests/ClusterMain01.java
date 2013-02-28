@@ -3,13 +3,19 @@ package hadoop.hdfs.tests;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.sql.Date;
 import java.text.NumberFormat;
+import java.util.Arrays;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileChecksum;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 
 public class ClusterMain01 {
 
@@ -17,12 +23,15 @@ public class ClusterMain01 {
 //        testCreation();
 //        testCreationWithReplication();
 //        testLargeFileCreation();
-        testReadingLargeFile();
+//        testReadingLargeFile();
+//        testFileCheckSums();
+//        testFileLocations();
+        testListLocatedStatus();
     }
 
     private static void testCreation() throws Exception {
         Configuration conf = new Configuration();
-        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/01.data");
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/01.data");
         FileSystem fs = FileSystem.get(uri, conf);
 
         Path path = new Path(uri);
@@ -36,7 +45,7 @@ public class ClusterMain01 {
     
     private static void testCreationWithReplication() throws Exception {
         Configuration conf = new Configuration();
-        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/01.data");
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/01.data");
         FileSystem fs = FileSystem.get(uri, conf);
         
         Path path = new Path(uri);
@@ -49,7 +58,7 @@ public class ClusterMain01 {
     }
     
     private static void testLargeFileCreation() throws IOException {
-        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/large.01.data");
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/large.01.data");
         Configuration conf = new Configuration();
         FileSystem fs = FileSystem.get(uri, conf);
         
@@ -80,7 +89,7 @@ public class ClusterMain01 {
     }
     
     private static void testReadingLargeFile() throws Exception {
-        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/large.01.data");
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/large.01.data");
         Configuration conf = new Configuration();
         FileSystem fs = FileSystem.get(uri, conf);
         
@@ -101,5 +110,75 @@ public class ClusterMain01 {
         inputStream.close();
         
         System.out.println((System.currentTimeMillis() - start) / 1000 + " sec - total time");
+    }
+    
+    private static void testFileLocations() throws IOException {
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/large.01.data");
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(uri, conf);
+        
+        BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(new Path(uri), 0, Long.MAX_VALUE);
+        
+        for (int i = 0; i < fileBlockLocations.length; i++) {
+            BlockLocation blockLocation = fileBlockLocations[i];
+            System.out.println(blockLocation);
+            
+            System.out.println(Arrays.toString(blockLocation.getHosts()));
+            System.out.println(Arrays.toString(blockLocation.getNames()));
+            
+            System.out.println(blockLocation.getLength() + "\t" + blockLocation.getOffset());
+            
+            System.out.println(Arrays.toString(blockLocation.getTopologyPaths()));
+            System.out.println();
+        }
+    }
+    
+    private static void testListLocatedStatus() throws IOException {
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/large.01.data");
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(uri, conf);
+        
+        RemoteIterator<LocatedFileStatus> listLocatedStatus = fs.listLocatedStatus(new Path(uri));
+        
+        while (listLocatedStatus.hasNext()) {
+            LocatedFileStatus locatedFileStatus = listLocatedStatus.next();
+
+            System.out.println(locatedFileStatus.getBlockSize());
+            System.out.println(locatedFileStatus.getLen());
+            System.out.println(locatedFileStatus.getOwner());
+            System.out.println(locatedFileStatus.getPath());
+//            System.out.println(locatedFileStatus.getSymlink());
+            System.out.println(locatedFileStatus.getReplication());
+            System.out.println(new Date(locatedFileStatus.getAccessTime()));
+            System.out.println(new Date(locatedFileStatus.getModificationTime()));
+            
+            BlockLocation[] blockLocations = locatedFileStatus.getBlockLocations();
+            for (int i = 0; i < blockLocations.length; i++) {
+                BlockLocation blockLocation = blockLocations[i];
+                System.out.println(blockLocation);
+                
+                System.out.println(Arrays.toString(blockLocation.getHosts()));
+                System.out.println(Arrays.toString(blockLocation.getNames()));
+                
+                System.out.println(blockLocation.getLength() + "\t" + blockLocation.getOffset());
+                
+                System.out.println(Arrays.toString(blockLocation.getTopologyPaths()));
+                System.out.println();
+            }
+        }
+        
+    }
+    
+    private static void testFileCheckSums() throws IOException {
+        URI uri = URI.create("hdfs://192.168.140.129/user/rtershak/data/large.01.data");
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(uri, conf);
+        
+        FileChecksum fileChecksum = fs.getFileChecksum(new Path(uri));
+        System.out.println(fileChecksum);
+        
+        System.out.println(fileChecksum.getAlgorithmName());
+        System.out.println(fileChecksum.getLength());
+        System.out.println(Arrays.toString(fileChecksum.getBytes()));
     }
 }

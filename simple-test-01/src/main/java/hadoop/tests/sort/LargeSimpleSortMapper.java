@@ -15,6 +15,9 @@ public class LargeSimpleSortMapper extends MapReduceBase implements Mapper<LongW
     
     public void map(LongWritable key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
 
+        if (Math.random() < 0.0001) {
+            throw new IOException("Opa, RE");
+        }
         text.set(value);
         output.collect(text, text);
     }
